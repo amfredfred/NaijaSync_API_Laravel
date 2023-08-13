@@ -19,7 +19,7 @@ class Posts extends Model {
         'tags' => 'array',
     ];
 
-    protected $appends = [ 's3_file_url', 's3_thumbnail_url' ];
+    // protected $appends = [ 's3_file_url', 's3_thumbnail_url' ];
 
     public function owner() {
         return $this->belongsTo( User::class, 'owner_id' );

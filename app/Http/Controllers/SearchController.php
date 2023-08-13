@@ -11,10 +11,14 @@ class SearchController extends Controller
     {
         $query = $request->input('query');
         
-        $results = Posts::where('title', 'like', "%{$query}%")
-            ->orWhere('description', 'like', "%{$query}%")
-            ->orWhereJsonContains('tags', $query)
-            ->get();
+        // $results = Posts::where('title', 'like', "%{$query}%")
+        //     ->orWhere('description', 'like', "%{$query}%")
+        //     ->orWhereJsonContains('tags', $query)
+        //     ->get();
+
+        $results = Posts::search($query)->get();
+
+        dd($results, $query);
 
         return response()->json($results);
     }

@@ -3,6 +3,8 @@
 @section('title', "Upload")
 
 @section('main-content')
+
+
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8">
@@ -28,6 +30,11 @@
                                 <input type="file" class="form-control-file" id="thumbnail" name="thumbnail">
                             </div>
 
+                             <div class="form-group">
+                                 <label for="upload">File</label>
+                                 <input type="file" class="form-control-file" id="upload" name="upload">
+                             </div>
+
                             <div class="form-group">
                                 <label for="location_view">Location (View)</label>
                                 <input type="text" class="form-control" id="location_view" name="location_view">
@@ -43,7 +50,7 @@
                                 <input type="text" class="form-control" id="tags" name="tags" placeholder="tag1, tag2, tag3">
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Upload</button>
+                            <button type="submit" class="btn btn-primary">upload</button>
                         </form>
                     </div>
                 </div>

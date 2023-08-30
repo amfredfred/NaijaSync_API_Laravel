@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'search']);
+
     Route::resource('/posts', PostController::class);
 
     Route::get('/{segments}', function ($filePath) {
@@ -33,8 +34,4 @@ Route::prefix('v1')->group(function () {
 
     return response()->file($path);
     })->where('segments', '.*');
-
-    Route::get('/', function (){
-        dd("WELCOMDE");
-    });
 });

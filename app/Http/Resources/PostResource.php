@@ -17,6 +17,7 @@ class PostResource extends JsonResource {
         // $this = parent::toArray( $request );
 
         $post = [
+            'puid'=>$this->puid,
             'id'=>$this->id,
             'ownerId'=>$this->owner_id,
             'title'=>$this->title,
@@ -38,7 +39,7 @@ class PostResource extends JsonResource {
             'downloadable'=>$this->downloadable,
             'playtime'=>$this->playtime,
             'fileType'=>$this->file_type,
-            'postSlug' => $this->post_slug,
+            'postType' => $this->post_type,
             'updatedAt'=>$this->updated_at,
             'createdAt'=>$this->created_at,
         ];

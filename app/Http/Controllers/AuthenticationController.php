@@ -42,4 +42,3 @@ class AuthenticationController extends Controller {
 
     // Add more methods for logout, password reset, etc.
 }
-

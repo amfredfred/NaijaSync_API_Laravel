@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PostTypes;
 use App\Http\Resources\PostResource;
 use Illuminate\Http\Request;
 use App\Models\Posts;
@@ -16,7 +17,21 @@ class PostController extends Controller {
     */
 
     public function index() {
-        //
+        try {
+            $postsCollection = Posts::inRandomOrder()
+                ->orderBy('created_at', 'desc')
+                ->paginate(5);
+
+            $modifiedPosts = $postsCollection->getCollection()->map(function ($post) {
+                return new PostResource($post);
+            });
+
+            $postsCollection->setCollection($modifiedPosts);
+
+            return response()->json($postsCollection, 200);
+        } catch (\Throwable $th) {
+            return response()->json([[], 'message' => 'Something went wrong: ' . $th->getMessage()], 500);
+        }
     }
 
     /**
@@ -35,35 +50,37 @@ class PostController extends Controller {
     public function store( Request $request ) {
 
         $fileHelper = new FilesHelper();
+        $postType = $request->input( 'type' );
 
         $validatedData = $request->validate( [
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'caption' => 'nullable|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'upload' => 'required|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:5000',
-            'location_view' => 'nullable|string',
-            'location_download' => 'nullable|string',
+            'upload' => 'nullable|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:50000',
         ] );
 
-        $selectedTags = explode( ', ', $request->input( 'tags', '' ) );
+        $selectedTags = explode( ', ', $request->input( 'tags', [] ) );
+        $isimportLiink = $request->input( 'import_link' );
+
+        if ( $postType ) {
+            $validatedData[ 'post_type' ] = PostTypes::class::getValue( $postType );
+        }
 
         try {
-
             // Additional data
-            $validatedData[ 'owner_id' ] = $request->user()->id;
-            $validatedData[ 'ratings' ] = 0;
-            $validatedData[ 'duration' ] = 0;
+            $validatedData[ 'owner_id' ] = 1;
+            //$request->user()->id
             $thumbnailPath = '';
 
             DB::beginTransaction();
-            $postSlug = Str::slug( $validatedData[ 'title' ] );
-            $postSlug = Str::upper( $postSlug ).'-'.Str::random( 5 );
+            $puid =  uniqid( config( 'app.name' ).'-' );
 
             // Handle thumbnail upload
             if ( $request->hasFile( 'thumbnail' ) ) {
                 $thumbnailPath = $request->file( 'thumbnail' );
                 $thumbMimeType = $thumbnailPath->getClientOriginalExtension();
-                $thumbnailPath = $thumbnailPath->storeAs( 'thumbnails', $postSlug.'.'.$thumbMimeType );
+                $thumbnailPath = $thumbnailPath->storeAs( 'thumbnails', $puid.'.'.$thumbMimeType );
                 $relativePath = str_replace( '/storage', '', $thumbnailPath );
                 $absoluetPath = storage_path( 'app/' . $relativePath );
                 $validatedData[ 'thumbnail_url' ] = $relativePath;
@@ -73,11 +90,18 @@ class PostController extends Controller {
             if ( $request->hasFile( 'upload' ) ) {
                 $file = $request->file( 'upload' );
                 $fileMimeType = $file->getClientOriginalExtension();
-                $fileType = $fileHelper->getFileType( $fileMimeType, true );
-                $fileUrl = $file->storeAs( 'posts/'.$fileType.'/'.$fileMimeType, $postSlug.'.'.$fileMimeType );
+                $fileType = $fileHelper->getFileType( $fileMimeType );
+                $fileUrl = $file->storeAs( 'posts/'.$fileType.'/'.$fileMimeType, $puid.'.'.$fileMimeType );
                 $relativePath = str_replace( '/storage', '', $fileUrl );
                 $absoluetPath = storage_path( 'app/' . $relativePath );
                 $fi = $fileHelper->fi( $absoluetPath );
+
+                if ( !isset( $validatedData[ 'title' ] ) ) {
+                    if ( isset( $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ] ) ) {
+                        $validatedData[ 'title' ] = $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ];
+                        array_push($selectedTags, Str::camel( $validatedData[ 'title' ]));
+                    }
+                }
 
                 $validatedData[ 'source_qualities' ] = [
                     'original' => [
@@ -100,17 +124,25 @@ class PostController extends Controller {
                 $validatedData[ 'mime_type' ] = $fileMimeType;
                 $validatedData[ 'file_type' ] = $fileType;
                 $validatedData[ 'file_url' ] = $relativePath;
-                $validatedData[ 'post_slug' ] = $postSlug;
+                $validatedData[ 'puid' ] = $puid;
             }
+
+            $validatedData[ 'title' ] =  $validatedData[ 'title' ]  ?? '';
+
+            //  =
             $validatedData[ 'tags' ] = $selectedTags;
             $post = Posts::create( $validatedData );
             DB::commit();
-            return dd( $post );
-            // return redirect()->route( 'posts.index' )->with( 'success', 'Post created successfully.' );
+            return response()->json( [
+                'message' => 'post created successfully',
+                'post' => $post
+            ], 201 );
         } catch ( \Throwable $th ) {
             //throw $th;
             DB::rollback();
-            dd( $th );
+            return response()->json( [
+                'message' => 'something went wrong: '.$th->getMessage()
+            ], 500 );
         }
 
     }

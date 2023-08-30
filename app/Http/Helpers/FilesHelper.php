@@ -4,10 +4,10 @@ namespace  App\Http\Helpers;
 use  \getID3;
 
 class FilesHelper {
-    function getFileType( $fileName, $skip =  false ) {
+    function getFileType( $fileName ) {
         $extension = pathinfo( $fileName, PATHINFO_EXTENSION );
 
-        switch ( $skip ? $fileName: $extension ) {
+        switch ( $fileName) {
             case 'jpg':
             case 'jpeg':
             case 'png':

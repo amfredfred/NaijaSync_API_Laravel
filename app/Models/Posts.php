@@ -10,9 +10,28 @@ class Posts extends Model {
     use HasFactory, Searchable;
 
     protected $fillable = [
-        'owner_id', 'title', 'description', 'file_url', 'thumbnail_url', 'views', 'downloads', 'likes',
-        'duration', 'mime_type', 'source_qualities', 'location_view', 'location_download', 'tags',
-        'ratings', 'price', 'downloadable', 'playtime', 'file_type',   'post_genre', 'puid','post_type'
+        'owner_id',
+        'title',
+        'description',
+        'file_url',
+        'thumbnail_url',
+        'views',
+        'downloads',
+        'likes',
+        'duration',
+        'mime_type',
+        'source_qualities',
+        'location_view',
+        'location_download',
+        'tags',
+        'ratings',
+        'price',
+        'downloadable',
+        'playtime',
+        'file_type',
+        'post_genre',
+        'puid',
+        'post_type'
     ];
 
     protected $casts = [
@@ -24,8 +43,8 @@ class Posts extends Model {
 
     // protected $appends = [ 's3_file_url', 's3_thumbnail_url' ];
 
-    public function owner() {
-        return $this->belongsTo( User::class, 'owner_id' );
+    public function user() {
+        return $this->belongsTo( User::class );
     }
 
 }

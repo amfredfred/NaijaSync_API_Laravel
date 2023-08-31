@@ -60,7 +60,7 @@ class PostController extends Controller {
             'upload' => 'nullable|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:50000',
         ] );
 
-        $selectedTags = explode( ', ', $request->input( 'tags', [] ) );
+        $selectedTags = json_decode($request->input( 'tags', [] ) );
         $isimportLiink = $request->input( 'import_link' );
 
         if ( $postType ) {

@@ -27,7 +27,6 @@ class PostResource extends JsonResource {
             'views'=>$this->views,
             'downloads'=>$this->downloads,
             'likes'=>$this->likes,
-            'duration'=>$this->duration,
             'mimeType'=>$this->mime_type,
             'sourceQualities'=>$this->source_qualities,
             'locationView'=>$this->location_view,

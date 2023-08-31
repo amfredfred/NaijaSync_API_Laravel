@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
@@ -22,6 +23,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'search']);
+    Route::post('/register', [AuthenticationController::class, 'register_account']);
+    Route::post('/login', [AuthenticationController::class, 'authenticate']);
+
 
     Route::resource('/posts', PostController::class);
 

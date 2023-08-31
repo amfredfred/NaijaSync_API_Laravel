@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -19,6 +20,9 @@ class AuthenticationController extends Controller {
             'email' => $validatedData[ 'email' ],
             'password' => Hash::make( $validatedData[ 'password' ] ),
         ] );
+        
+        $account = $user->account = ([]);
+        
 
         $token = $user->createToken( 'authToken' )->plainTextToken;
 
@@ -33,12 +37,10 @@ class AuthenticationController extends Controller {
 
         if ( auth()->attempt( $credentials ) ) {
             $token =  auth()->user();
-            // ->createToken( 'authToken' )->plainTextToken;
+            $token = $token->setRememberToken(1);
             return response()->json( [ 'token' => $token ] );
         } else {
             return response()->json( [ 'error' => 'Unauthorized' ], 401 );
         }
     }
-
-    // Add more methods for logout, password reset, etc.
 }

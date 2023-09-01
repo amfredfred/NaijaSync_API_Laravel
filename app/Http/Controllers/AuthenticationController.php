@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ProfileResource;
 use App\Models\User;
 use App\Models\Account;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthenticationController extends Controller {
     public function register_account( Request $request ) {
@@ -20,13 +22,14 @@ class AuthenticationController extends Controller {
             'email' => $validatedData[ 'email' ],
             'password' => Hash::make( $validatedData[ 'password' ] ),
         ] );
-        
-        $account = $user->account = ([]);
-        
+
+        Account::create( [
+            'username' => Str::upper( uniqid( 'A-' ) ),
+            'user_id' => $user->id,
+        ] );
 
         $token = $user->createToken( 'authToken' )->plainTextToken;
-
-        return response()->json( [ 'user' => $user, 'token' => $token ] );
+        return response()->json( [ 'profile' => new ProfileResource( $user ), 'accessToken' => $token, 'message' => 'Welcome !!' ] );
     }
 
     public function authenticate( Request $request ) {
@@ -36,9 +39,13 @@ class AuthenticationController extends Controller {
         ] );
 
         if ( auth()->attempt( $credentials ) ) {
-            $token =  auth()->user();
-            $token = $token->setRememberToken(1);
-            return response()->json( [ 'token' => $token ] );
+            $user = auth()->user();
+
+            // Instead of using setRememberToken, you might generate an authentication token
+            // Here, we're using Laravel's built-in Passport package to generate an access token
+            $accessToken = $user->createToken( 'authToken' )->accessToken;
+
+            return response()->json( [ 'access_token' => $accessToken ] );
         } else {
             return response()->json( [ 'error' => 'Unauthorized' ], 401 );
         }

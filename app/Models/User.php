@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Account;
+use App\Models\Posts;
+use App\Models\Activity;
+use App\Models\Transaction;
 
 class User extends Authenticatable {
     use HasApiTokens, HasFactory, Notifiable;
@@ -47,11 +51,11 @@ class User extends Authenticatable {
     }
 
     public function posts() {
-        return $this->hasMany( Post::class );
+        return $this->hasMany( Posts::class, 'account_id' );
     }
 
     public function activities() {
-        return $this->belongsToMany( Activity::class, 'account_id' )->withTimestamps();
+        return $this->belongsToMany(Account::class, 'activities', 'account_id' );
     }
 
     public function sentTransactions() {

@@ -16,6 +16,11 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->unique(); 
             $table->integer('points')->default(0);
             $table->decimal('bank_account_balance', 10, 2)->default(0.00);
+            $table->json('profile_pics')->nullable();
+            $table->longText('bio')->nullable();
+            $table->string('gender', 100)->nullable();
+            $table->json('profile_cover_pics')->nullable();
+            $table->string('username', 100)->unique();
             $table->timestamps();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });

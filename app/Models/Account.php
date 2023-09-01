@@ -12,7 +12,17 @@ class Account extends Model {
     protected $fillable = [
         'user_id',
         'points',
+        'username',
+        'profile_pics',
+        'bio',
+        'gender',
+        'profile_cover_pics',
         'bank_account_balance',
+    ];
+
+    protected $casts = [
+        'profile_pics'=> 'array',
+        'profile_cover_pics'=>'array'
     ];
 
     function user() {

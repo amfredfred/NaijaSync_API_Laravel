@@ -19,7 +19,7 @@ class PostResource extends JsonResource {
         $post = [
             'puid'=>$this->puid,
             'id'=>$this->id,
-            'ownerId'=>$this->owner_id,
+            'owner'=> new AccountResource($this->account),
             'title'=>$this->title,
             'description'=>$this->description,
             'fileUrl'=>$this->file_url,
@@ -39,6 +39,8 @@ class PostResource extends JsonResource {
             'playtime'=>$this->playtime,
             'fileType'=>$this->file_type,
             'postType' => $this->post_type,
+            'likes' => $this->likes,
+            'liked' => $this->liked,
             'updatedAt'=>$this->updated_at,
             'createdAt'=>$this->created_at,
         ];

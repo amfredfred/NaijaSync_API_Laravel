@@ -29,4 +29,11 @@ class Account extends Model {
         return  $this->belongsTo( User::class );
     }
 
+    function posts () {
+        return $this->hasMany( Posts::class );
+    }
+
+    public function likedPosts() {
+        return $this->belongsToMany( Posts::class, 'likes', 'account_id', 'post_id' )->withTimestamps();
+    }
 }

@@ -17,25 +17,30 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
 Route::prefix('v1')->group(function () {
     Route::get('/search', [SearchController::class, 'search']);
     Route::post('/register', [AuthenticationController::class, 'register_account']);
     Route::post('/login', [AuthenticationController::class, 'authenticate']);
 
-
+    //
     Route::resource('/posts', PostController::class);
 
+    //
+    Route::middleware(['auth:sanctum'])->group(function (){
+       Route::post('/logout', [AuthenticationController::class, 'logout']);
+
+       //User Profile
+    });
+
+
+    //Getting file path
     Route::get('/{segments}', function ($filePath) {
-    $path = storage_path('app/' .   $filePath);
+        $path = storage_path('app/' .   $filePath);
 
-    if (!file_exists($path)) {
-        abort(404);
-    }
+        if (!file_exists($path)) {
+            abort(404); 
+        }
 
-    return response()->file($path);
+        return response()->file($path);
     })->where('segments', '.*');
 });

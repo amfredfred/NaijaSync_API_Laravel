@@ -11,6 +11,7 @@ use App\Models\Account;
 use App\Models\Posts;
 use App\Models\Activity;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable {
     use HasApiTokens, HasFactory, Notifiable;
@@ -55,7 +56,7 @@ class User extends Authenticatable {
     }
 
     public function activities() {
-        return $this->belongsToMany(Account::class, 'activities', 'account_id' );
+        return $this->belongsToMany( Account::class, 'activities', 'account_id' );
     }
 
     public function sentTransactions() {
@@ -73,4 +74,9 @@ class User extends Authenticatable {
     public function following() {
         return $this->belongsToMany( User::class, 'followers', 'follower_id', 'following_id' );
     }
+
+    public function likes() {
+        return $this->belongsToMany( Posts::class, 'likes', 'account_id', 'post_id' )->withTimestamps();
+    }
+
 }

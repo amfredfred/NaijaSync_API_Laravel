@@ -9,183 +9,233 @@ use App\Models\Posts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Http\Helpers\FilesHelper;
+use App\Models\Account;
 use Illuminate\Support\Str;
 
 class PostController extends Controller {
+
+    public function __construct() {
+        return $this->middleware( 'auth:sanctum' )->only( [ 'store', 'update', 'destroy', 'edit', 'create' ] );
+    }
+
     /**
     * Display a listing of the resource.
     */
 
-    public function index() {
+    public function index(Request $request) {
+        $account = Account::where('username', $request->query('username'))->first();
         try {
             $postsCollection = Posts::inRandomOrder()
-                ->orderBy('created_at', 'desc')
-                ->paginate(5);
+            ->orderBy( 'created_at', 'desc' )
+            ->paginate( 5 );
 
-            $modifiedPosts = $postsCollection->getCollection()->map(function ($post) {
-                return new PostResource($post);
-            });
-
-            $postsCollection->setCollection($modifiedPosts);
-
-            return response()->json($postsCollection, 200);
-        } catch (\Throwable $th) {
-            return response()->json([[], 'message' => 'Something went wrong: ' . $th->getMessage()], 500);
-        }
-    }
-
-    /**
-    * Show the form for creating a new resource.
-    */
-
-    public function create() {
-
-        return view( 'Post.upload' );
-    }
-
-    /**
-    * Store a newly created resource in storage.
-    */
-
-    public function store( Request $request ) {
-
-        $fileHelper = new FilesHelper();
-        $postType = $request->input( 'type' );
-
-        $validatedData = $request->validate( [
-            'title' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'caption' => 'nullable|string',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'upload' => 'nullable|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:50000',
-        ] );
-
-        $selectedTags = json_decode($request->input( 'tags', [] ) );
-        $isimportLiink = $request->input( 'import_link' );
-
-        if ( $postType ) {
-            $validatedData[ 'post_type' ] = PostTypes::class::getValue( $postType );
-        }
-
-        try {
-            // Additional data
-            $validatedData[ 'owner_id' ] = 1;
-            //$request->user()->id
-            $thumbnailPath = '';
-
-            DB::beginTransaction();
-            $puid =  uniqid( config( 'app.name' ).'-' );
-
-            // Handle thumbnail upload
-            if ( $request->hasFile( 'thumbnail' ) ) {
-                $thumbnailPath = $request->file( 'thumbnail' );
-                $thumbMimeType = $thumbnailPath->getClientOriginalExtension();
-                $thumbnailPath = $thumbnailPath->storeAs( 'thumbnails', $puid.'.'.$thumbMimeType );
-                $relativePath = str_replace( '/storage', '', $thumbnailPath );
-                $absoluetPath = storage_path( 'app/' . $relativePath );
-                $validatedData[ 'thumbnail_url' ] = $relativePath;
-            }
-
-            // Handle file upload
-            if ( $request->hasFile( 'upload' ) ) {
-                $file = $request->file( 'upload' );
-                $fileMimeType = $file->getClientOriginalExtension();
-                $fileType = $fileHelper->getFileType( $fileMimeType );
-                $fileUrl = $file->storeAs( 'posts/'.$fileType.'/'.$fileMimeType, $puid.'.'.$fileMimeType );
-                $relativePath = str_replace( '/storage', '', $fileUrl );
-                $absoluetPath = storage_path( 'app/' . $relativePath );
-                $fi = $fileHelper->fi( $absoluetPath );
-
-                if ( !isset( $validatedData[ 'title' ] ) ) {
-                    if ( isset( $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ] ) ) {
-                        $validatedData[ 'title' ] = $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ];
-                        array_push($selectedTags, Str::camel( $validatedData[ 'title' ]));
-                    }
+            $modifiedPosts = $postsCollection->getCollection()->map( function ( $post ) use ($account) {
+                $post['likes'] = count($post->likedByAccounts);
+                if($account){
+                   $liked =  $post->likedByAccounts()->where('account_id', $account->id)->first();
+                   if($liked) $post['liked'] = true;
                 }
-
-                $validatedData[ 'source_qualities' ] = [
-                    'original' => [
-                        'size' => $fi[ 'filesize' ],
-                        'path' => $relativePath,
-                        'name' => $fi[ 'filename' ],
-                        'format' => $fi[ 'fileformat' ]
-                    ]
-                ];
-                if ( isset( $fi[ 'playtime_string' ] ) )
-                $validatedData[ 'source_qualities' ][ 'original' ][ 'duration' ] = [
-                    'formatted' => $fi[ 'playtime_string' ],
-                    'playtime' => $fi[ 'playtime_seconds' ]
-                ];
-                if ( isset( $fi[ 'video' ][ 'resolution_x' ] ) )
-                $validatedData[ 'source_qualities' ][ 'original' ][ 'width' ] = $fi[ 'video' ][ 'resolution_x' ];
-                if ( isset( $fi[ 'video' ][ 'resolution_y' ] ) )
-                $validatedData[ 'source_qualities' ][ 'original' ][ 'height' ] = $fi[ 'video' ][ 'resolution_y' ];
-
-                $validatedData[ 'mime_type' ] = $fileMimeType;
-                $validatedData[ 'file_type' ] = $fileType;
-                $validatedData[ 'file_url' ] = $relativePath;
-                $validatedData[ 'puid' ] = $puid;
+                return new PostResource( $post );
             }
+        );
 
-            $validatedData[ 'title' ] =  $validatedData[ 'title' ]  ?? '';
+        $postsCollection->setCollection( $modifiedPosts );
 
-            //  =
-            $validatedData[ 'tags' ] = $selectedTags;
-            $post = Posts::create( $validatedData );
-            DB::commit();
-            return response()->json( [
-                'message' => 'post created successfully',
-                'post' => $post
-            ], 201 );
-        } catch ( \Throwable $th ) {
-            //throw $th;
-            DB::rollback();
-            return response()->json( [
-                'message' => 'something went wrong: '.$th->getMessage()
-            ], 500 );
-        }
+        return response()->json( $postsCollection, 200 );
+    } catch ( \Throwable $th ) {
+        return response()->json( [ [], 'message' => 'Something went wrong: ' . $th->getMessage() ], 500 );
+    }
+}
 
+/**
+* Show the form for creating a new resource.
+*/
+
+public function create() {
+
+    return view( 'Post.upload' );
+}
+
+/**
+* Store a newly created resource in storage.
+*/
+
+public function moveThumb( $thumbUri, $puid ) {
+    $thumbUri = $thumbUri;
+    $thumbMimeType = $thumbUri->getClientOriginalExtension();
+    $thumbUri = $thumbUri->storeAs( 'thumbnails', $puid.'.'.$thumbMimeType );
+    $relativePath = str_replace( '/storage', '', $thumbUri );
+    $absoluetPath = storage_path( 'app/' . $relativePath );
+    return $relativePath;
+}
+
+public function moveUploadedFiles($file,  $puid) {
+    $fileHelper = new FilesHelper();
+    $fileMimeType = $file->getClientOriginalExtension();
+    $fileType = $fileHelper->getFileType( $fileMimeType );
+    $fileUrl = $file->storeAs( 'posts/'.$fileType.'/'.$fileMimeType, $puid.'.'.$fileMimeType );
+    $relativePath = str_replace( '/storage', '', $fileUrl );
+    $absoluetPath = storage_path( 'app/' . $relativePath );
+    $fi = $fileHelper->fi( $absoluetPath );
+
+    $uploadInfo[ 'source_qualities' ] = [
+        'original' => [
+            'size' => $fi[ 'filesize' ],
+            'path' => $relativePath,
+            'name' => $fi[ 'filename' ],
+            'format' => $fi[ 'fileformat' ]
+        ]
+    ];
+    if ( isset( $fi[ 'playtime_string' ] ) )
+    $uploadInfo[ 'source_qualities' ][ 'original' ][ 'duration' ] = [
+        'formatted' => $fi[ 'playtime_string' ],
+        'playtime' => $fi[ 'playtime_seconds' ]
+    ];
+    if ( isset( $fi[ 'video' ][ 'resolution_x' ] ) )
+    $uploadInfo[ 'source_qualities' ][ 'original' ][ 'width' ] = $fi[ 'video' ][ 'resolution_x' ];
+    if ( isset( $fi[ 'video' ][ 'resolution_y' ] ) )
+    $uploadInfo[ 'source_qualities' ][ 'original' ][ 'height' ] = $fi[ 'video' ][ 'resolution_y' ];
+
+    $uploadInfo[ 'mime_type' ] = $fileMimeType;
+    $uploadInfo[ 'file_type' ] = $fileType;
+    $uploadInfo[ 'file_url' ] = $relativePath;
+    $uploadInfo[ 'puid' ] = $puid;
+
+    return $uploadInfo;
+}
+
+public function store( Request $request ) {
+
+    $postType = $request->input( 'type' );
+
+    $user  = request()->user();
+    $followers = $user->followers;
+    $following = $user->following;
+
+    $validatedData = $request->validate( [
+        'title' => 'nullable|string|max:255',
+        'description' => 'nullable|string',
+        'caption' => 'nullable|string',
+        'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        'upload' => 'nullable|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:50000',
+    ] );
+
+    $selectedTags = json_decode( $request->input( 'tags','') );
+    $validatedData['description'] = json_decode($request->input('description'), null);
+    $isimportLiink = $request->input( 'import_link' );
+
+    if ( $postType ) {
+        $validatedData[ 'post_type' ] = PostTypes::class::getValue( $postType );
     }
 
-    /**
-    * Display the specified resource.
-    */
+    try {
+        $validatedData[ 'account_id' ] =  $user->account->id;
+        DB::beginTransaction();
+        $puid =  uniqid( config( 'app.name' ).'-' );
 
-    public function show( string $id ) {
-        try {
-            $post = Posts::find( $id );
-            if ( $post ) {
-                $post  = new PostResource( $post );
-                return response()->json( $post,  200 );
-            } else {
-                return response()->json( [ 'message'=>'post with id '. $id.' not found' ], 404 );
+        // Handle thumbnail upload
+        if ( $request->hasFile( 'thumbnail' ) ) {
+            $validatedData[ 'thumbnail_url' ] = $this->moveThumb($request->file( 'thumbnail' ), $puid );
+        }
+        // Handle file upload
+        if ( $request->hasFile( 'upload' ) ) { 
+            if ( !isset( $validatedData[ 'title' ] ) ) {
+                if ( isset( $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ] ) ) {
+                    $validatedData[ 'title' ] = $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ];
+                    array_push( $selectedTags, Str::camel( $validatedData[ 'title' ] ) );
+                }
             }
-        } catch ( \Throwable $th ) {
-            return response()->json( [ 'message'=>$th->getMessage() ], 500 );
+            $uploadInfo = $this->moveUploadedFiles($request->file( 'upload' ), $puid);
+            $validatedData = [...$validatedData, ...$uploadInfo] ;
+        }
+        $validatedData[ 'tags' ] = $selectedTags;
+        $post = Posts::create( $validatedData );
+        DB::commit();
+        return response()->json( ['message' => 'post created successfully',  'post' => $post ], 201 );
+    } catch ( \Throwable $th ) {
+        //throw $th;
+        DB::rollback();
+        return response()->json( [
+            'message' => 'something went wrong: '.$th->getMessage()
+        ], 500 );
+    }
+
+}
+
+/**
+* Display the specified resource.
+*/
+
+public function show( string $id ) {
+    try {
+        $post = Posts::find( $id );
+        if ( $post ) {
+            $post  = new PostResource( $post );
+            return response()->json( $post,  200 );
+        } else {
+            return response()->json( [ 'message'=>'post with id '. $id.' not found' ], 404 );
+        }
+    } catch ( \Throwable $th ) {
+        return response()->json( [ 'message'=>$th->getMessage() ], 500 );
+    }
+}
+
+/**
+* Show the form for editing the specified resource.
+*/
+
+public function edit( string $id ) {
+    //
+}
+
+/**
+* Update the specified resource in storage.
+*/
+
+public function update( Request $request, string $puid ) {
+    $user  = request()->user();
+    $post = Posts::where( 'puid', $puid )->first();
+    $message = 'nicely done 🌟!';
+
+    if ( !$post ) return response()->json( [ 'message' => 'Post not found' ], 404 );
+
+
+    if ( $request->has( 'liked' ) ) {
+        $liked = $user->likes()->where('post_id', $post->id)->first();
+        if ( $liked ) {
+           $post->likedByAccounts()->detach($user->account->id);
+            $message = 'Unliked';
+        } else {
+           $post->likedByAccounts()->attach($user->account->id);
+            $message = 'Liked';
         }
     }
-
-    /**
-    * Show the form for editing the specified resource.
-    */
-
-    public function edit( string $id ) {
-        //
+    if($request->has('description'))
+        $post->description = $request->input('description', null);
+    if($request->has('title'))
+        $post->title = $request->input('title', null);
+    if($request->has('tags'))
+       $post->tags = json_decode( $request->input( 'tags', [] ) );
+    if($request->hasFile('thumbnail'))
+        $post->thumbnail_url = $this->moveThumb($request->file( 'thumbnail' ), $puid);
+    if($request->hasFile('upload')){
+        $uploadedFile = $this->moveUploadedFiles($request->file('unpload'), $puid);
+        $post->file_url =  $uploadedFile['file_url'];
+        $post->source_qualities = $uploadedFile['source_qualities'];
+        $post->mime_type = $uploadedFile[ 'mime_type' ] ;
+        $post->file_type = $uploadedFile[ 'file_type' ] ;
     }
 
-    /**
-    * Update the specified resource in storage.
-    */
+    $post->save();
+    return response()->json(['message' => $message  ] );
+}
 
-    public function update( Request $request, string $id ) {
-        //
-    }
+/**
+* Remove the specified resource from storage.
+*/
 
-    /**
-    * Remove the specified resource from storage.
-    */
-
-    public function destroy( string $id ) {
-        //
-    }
+public function destroy( string $puid ) {
+    $user  = request()->user();
+    $user->posts()->where('puid', $puid)->first()->delete();
+}
 }

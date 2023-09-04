@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('account_id');
             $table->string('puid', 100)->unique();
-            $table->string('title');
+            $table->string('title')->nullable();
             $table->longText('description')->nullable();
             $table->string('file_url')->unique();
             $table->string('thumbnail_url')->unique()->nullable();

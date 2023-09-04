@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Scout\Searchable;
+use App\Models\Like;
 
 class Posts extends Model {
     use HasFactory, Searchable;
 
     protected $fillable = [
-        'owner_id',
+        'account_id',
         'title',
         'description',
         'file_url',
@@ -43,8 +44,15 @@ class Posts extends Model {
 
     // protected $appends = [ 's3_file_url', 's3_thumbnail_url' ];
 
-    public function user() {
-        return $this->belongsTo( User::class );
+    public function account() {
+        return $this->belongsTo( Account::class );
     }
 
+    public function likes() {
+        return $this->hasMany( Like::class );
+    }
+
+    public function likedByAccounts() {
+        return $this->belongsToMany( Account::class, 'likes', 'post_id', 'account_id' )->withTimestamps();
+    }
 }

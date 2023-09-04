@@ -17,7 +17,7 @@ class UserResource extends JsonResource
         return [
             'email' => $this->email,
             'name' => $this->name,
-            'emailVerifiedAt' => $this->email_verified_at
+            'isEmailVerified' => $this->email_verified_at !== null
         ];
     }
 }

@@ -2,20 +2,79 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\AccountResource;
 use App\Http\Resources\PostCollection;
+use App\Http\Resources\ProfileResource;
+use App\Models\Account;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller {
 
-    public function posts( Request $request ) {
+     public function __construct() {
+        return $this->middleware( 'auth:sanctum' )->only(  [ 'updateAccount' ] );
+    }
 
+    public function posts( Request $request ) {
         try {
             $user = request()->user();
-            $posts = $user->posts()->orderBy('created_at', 'desc')->get();
+            $posts = $user->posts()->orderBy( 'created_at', 'desc' )->get();
             $posts = new PostCollection( $posts );
             return response()->json( $posts, 200 );
         } catch ( \Throwable $th ) {
             return response()->json( [ 'message' => $th->getMessage() ], 500 );
         }
+    }
+
+    public function checkAccountExists( Request $request ) {
+        $account = null;
+        if ( $request->has( 'username' ) ) {
+            $identifier = $request->query( 'username' );
+            $account = Account::where( 'username', $identifier )->first();
+        } else if ( $request->has( 'email' ) ) {
+            $identifier = $request->query( 'email' );
+            $user = User::where( 'email', $identifier )->first();
+            $account = $user->account;
+        }
+        if ( $account )
+        return response()->json( [ 'exists' => true, 'account' => new AccountResource( $account ) ] );
+        else
+        return response()->json( [ 'exists' => false, 'account' => $account ] );
+    }
+
+    public function updateAccount( Request $request ) {
+        $user = request()->user();
+        if ( !$user ) {
+            return response()->json( [ 'message' => 'User not found' ], 404 );
+        }
+
+        $account = $user->account;
+
+        if ( $request->has( 'username' ) )
+        $account->username = $request->input( 'username' );
+        if ( $request->has( 'gender' ) )
+        $account->gender = $request->input( 'gender' );
+        if ( $request->has( 'name' ) )
+        $user->name = $request->input( 'name' );
+        if ( $request->has( 'bio' ) )
+        $account->bio = $request->input( 'bio' );
+
+        if ( $request->hasFile( 'profile-image' ) ) {
+            $profileImage = $request->file( 'profile-image' );
+        }
+        if ( $request->hasFile( 'cover-image' ) ) {
+            $coverImage = $request->file( 'cover-image' );
+        }
+
+        $user->save();
+        $account->save();
+
+        $token = $user->createToken( 'authToken' )->plainTextToken;
+        return response()->json( [
+            'profile' =>new ProfileResource( $user ),
+            'accessToken' => $token,
+            'message' => 'Your account has been updated'
+        ] );
+
     }
 }

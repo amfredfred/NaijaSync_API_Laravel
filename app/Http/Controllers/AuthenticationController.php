@@ -43,7 +43,11 @@ class AuthenticationController extends Controller {
         ] );
 
         $token = $user->createToken( 'authToken' )->plainTextToken;
-        return response()->json( [ 'profile' => new ProfileResource( $user ), 'accessToken' => $token, 'message' => 'Welcome !!' ] );
+        return response()->json( [
+            'profile' => new ProfileResource( $user ),
+            'accessToken' => $token,
+            'message' => 'Welcome !!'
+        ] );
     }
 
     public function authenticate( Request $request ) {
@@ -65,7 +69,11 @@ class AuthenticationController extends Controller {
             }
 
             $token = $user->createToken( 'authToken' )->plainTextToken;
-            return response()->json( [ 'profile' => new ProfileResource( $user ), 'accessToken' => $token, 'message' => 'Welcome back '.$user->account->username.'  !!' ] );
+            return response()->json( [
+                'profile' => new ProfileResource( $user ),
+                'accessToken' => $token,
+                'message' => 'Welcome back !!'
+            ] );
 
         } catch ( \Throwable $th ) {
             return response()->json( [ 'message' => $th->getMessage() ], 500 );

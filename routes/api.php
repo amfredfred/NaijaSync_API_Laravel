@@ -25,6 +25,8 @@ Route::prefix('v1')->group(function () {
 
     //
     Route::resource('/posts', PostController::class);
+    Route::get('account-exists', [AccountController::class, 'checkAccountExists']);
+    Route::post('account-update', [AccountController::class, 'updateAccount']);
 
 
     //

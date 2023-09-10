@@ -7,7 +7,7 @@ class FilesHelper {
     function getFileType( $fileName ) {
         $extension = pathinfo( $fileName, PATHINFO_EXTENSION );
 
-        switch ( $fileName) {
+        switch ( $fileName ) {
             case 'jpg':
             case 'jpeg':
             case 'png':
@@ -18,6 +18,7 @@ class FilesHelper {
             case 'webm':
             case 'mov':
             case 'avi':
+            case 'mkv':
             return 'video';
             case 'mp3':
             case 'ogg':
@@ -25,7 +26,7 @@ class FilesHelper {
             case 'zip':
             return 'archive';
             default:
-            return 'unknownw';
+            return 'unknown';
         }
     }
 

@@ -13,6 +13,8 @@ use App\Http\Resources\PostCollection;
 use App\Models\Account;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
+use FFMpeg\FFMpeg;
+use FFMpeg\Coordinate\TimeCode;
 
 class PostController extends Controller {
 
@@ -70,8 +72,11 @@ public function create() {
 */
 
 public function moveThumb( $thumbUri, $puid ) {
+    $fileHelper = new FilesHelper();
     $thumbUri = $thumbUri;
     $thumbMimeType = $thumbUri->getClientOriginalExtension();
+    if($fileHelper->getFileType($thumbMimeType) === 'video')
+     $thumbMimeType = 'jpg';
     $thumbUri = $thumbUri->storeAs( 'thumbnails', $puid.'.'.$thumbMimeType );
     $relativePath = str_replace( '/storage', '', $thumbUri );
     $absoluetPath = storage_path( 'app/' . $relativePath );
@@ -109,6 +114,7 @@ public function moveUploadedFiles($file,  $puid) {
     $uploadInfo[ 'file_type' ] = $fileType;
     $uploadInfo[ 'file_url' ] = $relativePath;
     $uploadInfo[ 'puid' ] = $puid;
+    $uploadInfo['absoluetPath'] = $absoluetPath;
 
     return $uploadInfo;
 }
@@ -116,6 +122,7 @@ public function moveUploadedFiles($file,  $puid) {
 public function store( Request $request ) {
 
     $postType = $request->input( 'type' );
+    $fileHelper = new FilesHelper();
 
     $user  = request()->user();
     $followers = $user->followers;
@@ -139,7 +146,7 @@ public function store( Request $request ) {
     try {
         $validatedData[ 'account_id' ] =  $user->account->id;
         DB::beginTransaction();
-        $puid =  uniqid( config( 'app.name' ).'-' );
+        $puid =  uniqid( Str::lower(config( 'app.name' )).'-' );
 
         // Handle thumbnail upload
         if ( $request->hasFile( 'thumbnail' ) ) {
@@ -154,6 +161,21 @@ public function store( Request $request ) {
                 }
             }
             $uploadInfo = $this->moveUploadedFiles($request->file( 'upload' ), $puid);
+            if(!$request->hasFile('thumbnail')){  
+                $fileType = $fileHelper->getFileType($uploadInfo['mime_type']);
+                if($fileType === 'video'){
+                  try {
+                    $ffmpeg = FFMpeg::create();
+                        $video = $ffmpeg->open($request->file('upload'));  
+                        $thumbnail = $video->frame(TimeCode::fromSeconds(0.01));
+                        $validatedData[ 'thumbnail_url' ] = $this->moveThumb($thumbnail->getPathfile(), $puid);
+                  } catch (\Throwable $th) {
+                    //throw $th;
+                  }
+                }else if ($fileType === 'audio'){
+                    
+                }
+            }
             $validatedData = [...$validatedData, ...$uploadInfo] ;
         }
         $validatedData[ 'tags' ] = $selectedTags;

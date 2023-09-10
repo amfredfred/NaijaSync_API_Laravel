@@ -32,7 +32,11 @@ class Posts extends Model {
         'file_type',
         'post_genre',
         'puid',
-        'post_type'
+        'post_type',
+        'artist',
+        'album',
+        'genre',
+        'year',
     ];
 
     protected $casts = [

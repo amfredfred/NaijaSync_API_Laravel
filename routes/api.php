@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SearchController;
@@ -25,9 +26,11 @@ Route::prefix('v1')->group(function () {
     //
     Route::resource('/posts', PostController::class);
 
+
     //
     Route::middleware(['auth:sanctum'])->group(function (){
        Route::post('/logout', [AuthenticationController::class, 'logout']);
+       Route::post('account-posts', [AccountController::class, 'posts']);
 
        //User Profile
     });

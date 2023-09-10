@@ -13,5 +13,11 @@ final class TransactionType extends Enum {
     const SENDING = 'SENDING';
     const RECEIVING = 'RECEIVING';
     const REQUESTING = 'REQUESTING';
-    const POINTS_EARNING  = 'POINTS_EARNING';
+    const POINTS_EARNED  = 'POINTS_EARNED';
+    const TRANSFER = 'TRANSFER';
+    const AIRTIME = 'AIRTIME';
+    const CONVERTTION = 'CONVERTTION';
+    const DEPOSIT = 'DEPOSIT';
+    const CASHOUT = 'CASHOUT';
+    const INNTERNAL_TRANSFER = 'INNTERNAL_TRANSFER';
 }

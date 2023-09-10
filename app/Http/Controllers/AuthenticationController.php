@@ -18,6 +18,16 @@ class AuthenticationController extends Controller {
             'password' => 'required|string|min:8|confirmed',
         ] );
 
+        $quotes = [
+            'The only way to do great work is to love what you do. - Steve Jobs',
+            'Innovation distinguishes between a leader and a follower. - Steve Jobs',
+            'The best time to plant a tree was 20 years ago. The second best time is now. - Chinese Proverb',
+            "Don't watch the clock; do what it does. Keep going. - Sam Levenson",
+            'Success is not final, failure is not fatal: It is the courage to continue that counts. - Winston Churchill',
+        ];
+
+        $randomQuote = $quotes[ array_rand( $quotes ) ];
+
         $user = User::create( [
             'name' => $validatedData[ 'name' ],
             'email' => $validatedData[ 'email' ],
@@ -25,8 +35,11 @@ class AuthenticationController extends Controller {
         ] );
 
         Account::create( [
-            'username' => Str::upper( uniqid( 'A-' ) ),
+            'username' => Str::random( length:10 ),
             'user_id' => $user->id,
+            'profile_pics' => [ fake()->imageUrl() ],
+            'profile_cover_pics' => [ fake()->imageUrl() ],
+            'bio' => $randomQuote
         ] );
 
         $token = $user->createToken( 'authToken' )->plainTextToken;

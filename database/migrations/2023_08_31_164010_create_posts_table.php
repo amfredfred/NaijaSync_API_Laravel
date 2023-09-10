@@ -35,6 +35,12 @@ return new class extends Migration
             $table->decimal('price', 10, 2)->nullable(); 
             $table->decimal('rewards', 10, 2)->nullable(); 
             $table->boolean('downloadable')->default(true); 
+
+            $table->string('artist')->nullable();
+            $table->string('album')->nullable();
+            $table->json('genre')->nullable();
+            $table->integer('year')->nullable();
+
             $table->unsignedBigInteger('playtime')->default(0); 
             $table->enum('post_type', PostTypes::class::getValues())->nullable()->default(PostTypes::STATUS);
             $table->timestamps();

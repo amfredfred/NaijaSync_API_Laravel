@@ -60,11 +60,11 @@ class User extends Authenticatable {
     }
 
     public function sentTransactions() {
-        return $this->hasMany( Transaction::class, 'sender_id' );
+        return $this->hasMany( Transaction::class, 'from_account_id' );
     }
 
     public function receivedTransactions() {
-        return $this->hasMany( Transaction::class, 'receiver_id' );
+        return $this->hasMany( Transaction::class, 'to_account_id' );
     }
 
     public function followers() {

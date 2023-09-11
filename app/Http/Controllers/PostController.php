@@ -73,14 +73,17 @@ public function create() {
 
 public function moveThumb( $thumbUri, $puid ) {
     $fileHelper = new FilesHelper();
-    $thumbUri = $thumbUri;
-    $thumbMimeType = $thumbUri->getClientOriginalExtension();
-    if($fileHelper->getFileType($thumbMimeType) === 'video')
-     $thumbMimeType = 'jpg';
-    $thumbUri = $thumbUri->storeAs( 'thumbnails', $puid.'.'.$thumbMimeType );
-    $relativePath = str_replace( '/storage', '', $thumbUri );
-    $absoluetPath = storage_path( 'app/' . $relativePath );
-    return $relativePath;
+    $thumbMimeType = pathinfo($thumbUri, PATHINFO_EXTENSION);
+     $fileType = $fileHelper->getFileType($thumbMimeType);
+    if ($fileType === 'video')  
+        $thumbMimeType = 'jpg';
+    else if ($thumbMimeType  === 'tmp'){
+        $thumbMimeType = 'jpg';
+    } 
+    $customFilename = $puid . '_thumbnail.' . $thumbMimeType;
+    $relativePath = 'thumbnails/'  . $customFilename;
+    Storage::put($relativePath, file_get_contents($thumbUri), );
+    return  $relativePath;
 }
 
 public function moveUploadedFiles($file,  $puid) {
@@ -165,15 +168,18 @@ public function store( Request $request ) {
                 $fileType = $fileHelper->getFileType($uploadInfo['mime_type']);
                 if($fileType === 'video'){
                   try {
-                    $ffmpeg = FFMpeg::create();
+                        $ffmpeg = FFMpeg::create();
                         $video = $ffmpeg->open($request->file('upload'));  
-                        $thumbnail = $video->frame(TimeCode::fromSeconds(0.01));
-                        $validatedData[ 'thumbnail_url' ] = $this->moveThumb($thumbnail->getPathfile(), $puid);
-                  } catch (\Throwable $th) {
+                        $thumbnail = $video->frame(TimeCode::fromSeconds(0.1));
+                        $customFilename = $puid . '_thumbnail.png' ;
+                        $relativePath = 'thumbnails/'  . $customFilename;
+                        $thumbnail->save(storage_path('app/'.$relativePath));
+                        $validatedData[ 'thumbnail_url' ] = $relativePath ;
+                    } catch (\Throwable $th) {
                     //throw $th;
                   }
                 }else if ($fileType === 'audio'){
-                    
+
                 }
             }
             $validatedData = [...$validatedData, ...$uploadInfo] ;

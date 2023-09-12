@@ -8,11 +8,12 @@ use App\Http\Resources\ProfileResource;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AccountController extends Controller {
 
-     public function __construct() {
-        return $this->middleware( 'auth:sanctum' )->only(  [ 'updateAccount' ] );
+    public function __construct() {
+        return $this->middleware( 'auth:sanctum' )->only( [ 'updateAccount' ] );
     }
 
     public function posts( Request $request ) {
@@ -64,6 +65,18 @@ class AccountController extends Controller {
         }
         if ( $request->hasFile( 'cover-image' ) ) {
             $coverImage = $request->file( 'cover-image' );
+        }
+
+        if ( $request->has( 'new_password' ) && $request->has( 'current_password' ) ) {
+            // Validate form input
+            $request->validate( [
+                'current_password' => 'required',
+                'new_password' => 'required|min:8|confirmed',
+            ] );
+            if ( !Hash::check( $request->current_password, $user->password ) ) {
+                return response()->json( [ 'message' => 'The current password is incorrect.' ], 422 );
+            }
+            $user->password = Hash::make( $request->new_password );
         }
 
         $user->save();

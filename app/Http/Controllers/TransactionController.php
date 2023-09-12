@@ -21,17 +21,7 @@ class TransactionController extends Controller {
 
     }
 
-    public function transferPoints( $from, $to, $amount ) {
-        $acc1 = $from;
-        $acc2 = $to;
-        if ( $acc1->points - $amount >= 0 ) {
-            $acc2->posts += $amount;
-            $acc1->points -= $amount;
-            $acc1->save();
-            $acc2->save();
-            // return true;
-        } else {
-            // return false;
-        }
+    public function transferFrom( $from, $to, $amount ) {
+      
     }
 }

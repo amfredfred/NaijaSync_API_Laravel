@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Helpers\FilesHelper;
 use App\Http\Resources\PostCollection;
 use App\Models\Account;
+use App\Models\Point;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
 use FFMpeg\FFMpeg;
@@ -228,6 +229,26 @@ public function edit( string $id ) {
 * Update the specified resource in storage.
 */
 
+public function updateViews(Request $request ) {
+    $post = Posts::where( 'puid', $request->input('puid') )->first();
+    $owner = $post->account;
+    $message = 'nicely done 🌟!';
+    $point = new Point();
+
+    if ( !$post ) return response()->json( [ 'message' => 'Post not found' ], 404 );
+    if($request->has('views')){
+       $post->rewards += 1;
+       $point->balance += 10;
+       $point->account_id = $post->account->id;
+       $point->save();
+        $post->views += (int) $request->input('views');
+    }
+
+    $post->save();
+    $owner->save();
+    return response()->json(['message' => $message  ] );
+}
+
 public function update( Request $request, string $puid ) {
     $user  = request()->user();
     $post = Posts::where( 'puid', $puid )->first();
@@ -290,7 +311,6 @@ public function update( Request $request, string $puid ) {
         $account->points += $request->input('rewards');
         $account->save();
     }
-
     $post->save();
     return response()->json(['message' => $message  ] );
 }

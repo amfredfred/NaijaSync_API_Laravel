@@ -24,7 +24,7 @@ class AccountResource extends JsonResource {
             'profileCoverPics'=>$this->profile_cover_pics,
             'username'=>$this->username,
             'fullName' => $this->user->name,
-            'following' => $this->following,
+            'following' => $this->followings,
             'followers' => $this->followers,
         ];
     }

@@ -23,7 +23,7 @@ class ProfileResource extends JsonResource {
             'posts' => new PostCollection( $this->posts ),
             'activities'=> new ActivityCollection( $this->activities ),
             'followers' => new FollowerCollection( $this->followers ),
-            'following' => new FollowerCollection( $this->following )
+            'following' => new FollowerCollection( $this->followings )
         ];
     }
 }

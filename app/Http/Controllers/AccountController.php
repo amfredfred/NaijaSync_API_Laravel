@@ -59,6 +59,19 @@ class AccountController extends Controller {
         $user->name = $request->input( 'name' );
         if ( $request->has( 'bio' ) )
         $account->bio = $request->input( 'bio' );
+        if ( $request->has( 'followed' ) ) {
+            $followed = $user->followings()->where('following_id', $request->input('userId'))->first();
+            $accountToFollow = User::where( 'id', $request->input( 'userId' ) )->first();
+            if ( $followed ) {
+                if ( $accountToFollow )
+                $user->followings()->detach( $accountToFollow->id );
+                $message = 'Unliked';
+            } else {
+                if ( $accountToFollow )
+                $user->followings()->attach( $accountToFollow->id );
+                $message = 'Liked';
+            }
+        }
 
         if ( $request->hasFile( 'profile-image' ) ) {
             $profileImage = $request->file( 'profile-image' );

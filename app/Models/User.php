@@ -71,13 +71,12 @@ class User extends Authenticatable {
         return $this->belongsToMany( User::class, 'followers', 'following_id', 'follower_id' );
     }
 
-    public function following() {
+    public function followings() {
         return $this->belongsToMany( User::class, 'followers', 'follower_id', 'following_id' );
     }
 
     public function likes() {
         return $this->belongsToMany( Posts::class, 'likes', 'account_id', 'post_id' )->withTimestamps();
     }
-    
 
 }

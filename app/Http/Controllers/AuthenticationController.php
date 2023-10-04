@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class AuthenticationController extends Controller {
+
     public function register_account( Request $request ) {
         $validatedData = $request->validate( [
             'name' => 'required|string|max:255',
@@ -43,6 +44,7 @@ class AuthenticationController extends Controller {
         ] );
 
         $token = $user->createToken( 'authToken' )->plainTextToken;
+        
         return response()->json( [
             'profile' => new ProfileResource( $user ),
             'accessToken' => $token,
@@ -58,7 +60,6 @@ class AuthenticationController extends Controller {
             ] );
 
             $user  = auth()->attempt( $credentials );
-
             $user = User::where( 'email', $credentials[ 'email' ] )->first();
 
             if ( !$user ) {
@@ -69,6 +70,7 @@ class AuthenticationController extends Controller {
             }
 
             $token = $user->createToken( 'authToken' )->plainTextToken;
+
             return response()->json( [
                 'profile' => new ProfileResource( $user ),
                 'accessToken' => $token,

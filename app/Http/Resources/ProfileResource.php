@@ -20,7 +20,7 @@ class ProfileResource extends JsonResource {
                 'sent' =>  new TransactionResource( $this->sentTransactions ),
                 'received' =>  new TransactionResource( $this->receivedTransactions )
             ],
-            'posts' => new PostCollection( $this->posts ),
+            // 'posts' => new PostCollection( $this->posts ),
             'activities'=> new ActivityCollection( $this->activities ),
             'followers' => new FollowerCollection( $this->followers ),
             'following' => new FollowerCollection( $this->followings )

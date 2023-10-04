@@ -53,6 +53,8 @@ class AccountController extends Controller {
 
         if ( $request->has( 'username' ) )
         $account->username = $request->input( 'username' );
+        if ( $request->has( 'points' ) )
+        $account->points += ( float ) $request->input( 'points' );
         if ( $request->has( 'gender' ) )
         $account->gender = $request->input( 'gender' );
         if ( $request->has( 'name' ) )
@@ -60,7 +62,7 @@ class AccountController extends Controller {
         if ( $request->has( 'bio' ) )
         $account->bio = $request->input( 'bio' );
         if ( $request->has( 'followed' ) ) {
-            $followed = $user->followings()->where('following_id', $request->input('userId'))->first();
+            $followed = $user->followings()->where( 'following_id', $request->input( 'userId' ) )->first();
             $accountToFollow = User::where( 'id', $request->input( 'userId' ) )->first();
             if ( $followed ) {
                 if ( $accountToFollow )
@@ -102,5 +104,11 @@ class AccountController extends Controller {
             'message' => 'Your account has been updated'
         ] );
 
+    }
+
+    public function accountInfo( Request $requst ) {
+        $user = $requst->user();
+        if ( $user )
+        return new AccountResource( $user );
     }
 }

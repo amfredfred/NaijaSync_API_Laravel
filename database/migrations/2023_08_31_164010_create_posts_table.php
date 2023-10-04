@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('puid', 100)->unique();
             $table->string('title')->nullable();
             $table->longText('description')->nullable();
-            $table->string('file_url')->unique();
+            $table->string('file_url')->unique()->nullable();
             $table->string('thumbnail_url')->unique()->nullable();
             $table->unsignedBigInteger('views')->default(0);
             $table->unsignedBigInteger('downloads')->default(0);

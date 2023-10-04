@@ -20,7 +20,7 @@ use FFMpeg\Coordinate\TimeCode;
 class PostController extends Controller {
 
     public function __construct() {
-        return $this->middleware( 'auth:sanctum' )->only( [ 'store', 'update', 'destroy', 'edit', 'create'  ] );
+        return $this->middleware( 'auth:sanctum' )->only( [ 'store', 'update', 'destroy', 'edit', 'create' , 'postReact'  ] );
     }
 
     /**
@@ -30,15 +30,20 @@ class PostController extends Controller {
     public function index(Request $request) {
         $account = Account::where('username', $request->query('username'))->first();
         $getType = $request->query('type');
+        $perPage = $request->get('per_page', 10);
 
         try {
             if($getType){
-                $postsCollection = Posts::where('file_type', $getType )->inRandomOrder()->paginate(20);
+                $postsCollection = Posts::where('file_type', $getType )
+                // inRandomOrder()->
+                -> orderBy( 'updated_at', 'desc' )
+                ->paginate($perPage);
             }
             else {
-            $postsCollection = Posts::inRandomOrder()
-            ->orderBy( 'created_at', 'desc' )
-            ->paginate( 5 );
+                $postsCollection = Posts::
+                // inRandomOrder()->
+                orderBy( 'updated_at', 'desc' )
+                ->paginate( $perPage );
             }
 
             $modifiedPosts = $postsCollection->getCollection()->map( function ( $post ) use ($account) {
@@ -72,6 +77,7 @@ public function create() {
 */
 
 public function moveThumb( $thumbUri, $puid ) {
+    if( !$thumbUri) return null;
     $fileHelper = new FilesHelper();
     $thumbMimeType = pathinfo($thumbUri, PATHINFO_EXTENSION);
      $fileType = $fileHelper->getFileType($thumbMimeType);
@@ -138,25 +144,20 @@ public function store( Request $request ) {
         'upload' => 'nullable|mimes:jpeg,png,jpg,gif,mp4,zip,ogg,mp3,webp,webm,gif,mov,mkv|max:50000',
     ] );
 
-    $selectedTags = json_decode( $request->input( 'tags','') );
-    $validatedData['description'] = json_decode($request->input('description'), null);
-    $isimportLiink = $request->input( 'import_link' );
-
-    if ( $postType ) {
-        $validatedData[ 'post_type' ] = PostTypes::class::getValue( $postType );
-    }
-
     try {
-        $validatedData[ 'account_id' ] =  $user->account->id;
         DB::beginTransaction();
-        $puid =  uniqid( Str::lower(config( 'app.name' )).'-' );
 
-        // Handle thumbnail upload
-        if ( $request->hasFile( 'thumbnail' ) ) {
-            $validatedData[ 'thumbnail_url' ] = $this->moveThumb($request->file( 'thumbnail' ), $puid );
-        } 
-        // Handle file upload
-        if ( $request->hasFile( 'upload' ) ) { 
+        $post = new Posts();
+        $puid =  uniqid( Str::lower(config( 'app.name' )).'-' );
+        $post->puid = $puid;
+        $post->tags = json_decode( $request->input( 'tags') );
+        $post->description =  $request->input('description');
+        $post->title =  $request->input('title');
+        $post->thumbnail_url =   $this->moveThumb($request->file( 'thumbnail' ), $puid );
+        $post->post_type =  PostTypes::class::getValue( $postType );
+        $post->account_id =  $user->account->id;
+
+        if ( $request->hasFile('upload') ) { 
             if ( !isset( $validatedData[ 'title' ] ) ) {
                 if ( isset( $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ] ) ) {
                     $validatedData[ 'title' ] = $fi[ 'tags_html' ][ 'id3v2' ][ 'title' ][ 0 ];
@@ -167,7 +168,7 @@ public function store( Request $request ) {
             if(!$request->hasFile('thumbnail')){  
                 $fileType = $fileHelper->getFileType($uploadInfo['mime_type']);
                 if($fileType === 'video'){
-                  try {
+                    try {
                         $ffmpeg = FFMpeg::create();
                         $video = $ffmpeg->open($request->file('upload'));  
                         $thumbnail = $video->frame(TimeCode::fromSeconds(0.1));
@@ -177,22 +178,25 @@ public function store( Request $request ) {
                         $validatedData[ 'thumbnail_url' ] = $relativePath ;
                     } catch (\Throwable $th) {
                     //throw $th;
-                  }
+                    }
                 }else if ($fileType === 'audio'){
 
                 }
             }
-            $validatedData = [...$validatedData, ...$uploadInfo] ;
+            $post->mime_type = $uploadInfo['mime_type'];
+            $post->file_type = $uploadInfo['file_type'];
+            $post->file_url = $uploadInfo['file_url'];
+            $post->source_qualities = $uploadInfo['source_qualities'];
         }
-        $validatedData[ 'tags' ] = $selectedTags;
-        $post = Posts::create( $validatedData );
+
+        $post = $post->save();
         DB::commit();
         return response()->json( ['message' => 'post created successfully',  'post' => $post ], 201 );
     } catch ( \Throwable $th ) {
         //throw $th;
         DB::rollback();
         return response()->json( [
-            'message' => 'something went wrong: '.$th->getMessage()
+            'message' => 'something went wrong: '.$th->getMessage(), $postType
         ], 500 );
     }
 
@@ -228,7 +232,7 @@ public function edit( string $id ) {
 * Update the specified resource in storage.
 */
 
-public function updateViews(Request $request ) {
+public function postView(Request $request ) {
     $post = Posts::where( 'puid', $request->input('puid') )->first();
     $owner = $post->account;
     $message = 'nicely done 🌟!';
@@ -236,11 +240,11 @@ public function updateViews(Request $request ) {
 
     if ( !$post ) return response()->json( [ 'message' => 'Post not found' ], 404 );
     if($request->has('views')){
-       $post->rewards += 1;
-       $point->balance += 10;
+    //    $post->rewards += 1;
+    //    $point->balance += 10;
        $point->account_id = $post->account->id;
        $point->save();
-        $post->views += (int) $request->input('views');
+       $post->views += (int) $request->input('views');
     }
 
     $post->save();
@@ -248,70 +252,120 @@ public function updateViews(Request $request ) {
     return response()->json(['message' => $message  ] );
 }
 
+public function postReward(Request $request) {
+    $post = Posts::where('puid', $request->input('puid'))->first();
+
+    if (!$post) {
+        return response()->json(['error' => 'Post not found'], 404);
+    }
+
+    $rewardAmount = $request->input('rewards');
+
+    if (!$rewardAmount) {
+        return response()->json(['error' => 'Reward amount not provided'], 400);
+    }
+
+    $owner = $post->account;
+    $viewer  = auth()->guard('sanctum')->user();
+
+    if ($viewer) { 
+        $viewerAccount = $viewer->account;
+        $rewardAmount *= 0.7;
+        if ($owner->id !== $viewerAccount->id) {
+            $viewerAccount->points += $rewardAmount * 0.3;
+            $viewerAccount->save();
+        }else {
+            $rewardAmount = 0;
+        }
+    }
+
+    $owner->points += (int) $rewardAmount;
+    $owner->save();
+
+    $post->rewards += (int) $rewardAmount;
+    $post->save();
+
+    return response()->json(['message' => 'Rewards distributed successfully', $viewer ]);
+}
+
+
+public function postReact(Request $request ) {
+    $user  = request()->user();
+    if(!$user) return;
+    $post =  $user->posts()->where('puid', $request->input('puid'))->first();
+    if ( !$post ) return;
+    $reaction = $request->has( 'reacted' );
+    if (! $reaction) return;
+    $liked = $user->likes()->where('post_id', $post->id)->first();  
+    $liked ?  $post->likedByAccounts()->detach($user->account->id) : $post->likedByAccounts()->attach($user->account->id);
+    return response()->json(['message' => 'Reaction saved']);
+}
+
 public function update( Request $request, string $puid ) {
     $user  = request()->user();
-    $post = Posts::where( 'puid', $puid )->first();
-    $account = $post->account;
-    $message = 'nicely done 🌟!';
+    if(!$user) return;
+    $post =  $user->posts()->where('puid', $puid)->first();
+    if ( !$post ) return response()->json( [ 'message' => 'Post not found'], 404 );
+    $account = $user->account;
+    $message = 'nicely done 🌟 yup!';
 
-    if ( !$post ) return response()->json( [ 'message' => 'Post not found' ], 404 );
+    try {       
+        // 
+        $post->description = $request->input('description');
+        $post->title =  $request->input('title');
+        $post->album = $request->input('album');
+        $post->year = $request->input('year');
+        $post->tags = json_decode( $request->input( 'tags') );
 
-    if ( $request->has( 'liked' ) ) {
-        $liked = $user->likes()->where('post_id', $post->id)->first();
-        if ( $liked ) {
-           $post->likedByAccounts()->detach($user->account->id);
-            $message = 'Unliked';
-        } else {
-           $post->likedByAccounts()->attach($user->account->id);
-            $message = 'Liked';
+        if($request->hasFile('thumbnail')){
+            if($post->thumbnail_url){
+                    $thumbnail = storage_path('app/'.$post->thumbnail_url);
+                    if($thumbnail !== $request->file('thumbnail')->getPath()){
+                    if(file_exists( $thumbnail)) 
+                        unlink( $thumbnail);
+                    }
+                }
+            $post->thumbnail_url = $this->moveThumb($request->file( 'thumbnail' ), $puid);
         }
-    }
-    if($request->has('description'))
-        $post->description = $request->input('description', null);
-    if($request->has('title'))
-        $post->title = $request->input('title', null);
-    if($request->has('views'))
-        $post->views += $request->input('views');
-    if($request->has('tags')){
-       $tags = json_decode( $request->input( 'tags', [] ) );
-       $tags = array_unique(...$post->tags, ...$tags);
-       $post->tags = $tags;
-    }
-    if($request->hasFile('thumbnail'))
-        $post->thumbnail_url = $this->moveThumb($request->file( 'thumbnail' ), $puid);
-    if($request->has('downloadable'))
-        $post->downloadable = $request->input('downloadable');
-    if($request->has('album'))
-       $post->album = $request->input('album');
-    if($request->has('year'))
-       $post->year = $request->input('year');
-    if($request->has('genre')){
-       $genre = json_decode( $request->input( 'genre', [] ) );
-       $genre = array_unique(...$post->genre, ...$genre);
-       $post->genre = $genre;
-    }
-    if($request->has('transfer_post_to_username')){
-        $newOwner = Account::where('username', $request->input('transfer_post_to_username'))->first();
-        if($newOwner){
-            $post->account_id = $newOwner->id;
-            // $transaction = new TransactionController();
-            // $transaction->transferPoints($account, $newOwner, $post->rewards);
+        if($request->hasFile('upload')){
+            if($post->file_url){
+                    $fileurl = storage_path('app/'.$post->file_url);
+                    if( $post->file_url !== $request->file('upload')->getPath()){
+                        if(file_exists($fileurl))
+                        unlink($fileurl);
+                }
+            }
+            $uploadedFile = $this->moveUploadedFiles($request->file('upload'), $puid);
+            $post->file_url =  $uploadedFile['file_url'];
+            $post->source_qualities = $uploadedFile['source_qualities'];
+            $post->mime_type = $uploadedFile[ 'mime_type' ] ;
+            $post->file_type = $uploadedFile[ 'file_type' ] ;
         }
-    }
-    if($request->hasFile('upload')){
-        $uploadedFile = $this->moveUploadedFiles($request->file('unpload'), $puid);
-        $post->file_url =  $uploadedFile['file_url'];
-        $post->source_qualities = $uploadedFile['source_qualities'];
-        $post->mime_type = $uploadedFile[ 'mime_type' ] ;
-        $post->file_type = $uploadedFile[ 'file_type' ] ;
-    }
-    if($request->has('rewards')){
-        $post->rewards += (int) $request->input('rewards');
-        $account->points += $request->input('rewards');
+        if($request->has('downloadable'))
+            $post->downloadable = $request->input('downloadable');
+
+        if($request->has('genre')){
+            $genre = json_decode( $request->input( 'genre', [] ) );
+            $genre = array_unique(...$post->genre, ...$genre);
+            $post->genre = $genre;
+        }
+
+        if($request->has('transfer_post_to_username')){
+            $newOwner = Account::where('username', $request->input('transfer_post_to_username'))->first();
+            if($newOwner){
+                $post->account_id = $newOwner->id;
+                // $transaction = new TransactionController();
+                // $transaction->transferPoints($account, $newOwner, $post->rewards);
+            }
+        }
+
+   
         $account->save();
+        $post->save();
+        return response()->json(['message' => $message , $post ] );
+    } catch (\Throwable $th) {
+         return response()->json(['message' => 'An issue has occurred while tryng to update post.: '.$th->getMessage(), ], 500);
     }
-    $post->save();
-    return response()->json(['message' => $message  ] );
 }
 
 /**
@@ -320,6 +374,25 @@ public function update( Request $request, string $puid ) {
 
 public function destroy( string $puid ) {
     $user  = request()->user();
-    $user->posts()->where('puid', $puid)->first()->delete();
+    if($user){
+      $post =  $user->posts()->where('puid', $puid)->first();
+        try {
+            if($post->thumbnail_url){
+                $thumbnail = storage_path('app/'.$post->thumbnail_url);
+                if(file_exists( $thumbnail)) 
+                unlink( $thumbnail);
+            }
+            if($post->file_url){
+                $fileurl = storage_path('app/'.$post->file_url);
+                if(file_exists($fileurl))
+                unlink($fileurl);
+            }
+            $post->delete();
+            return response()->json(['message' => 'The post has been successfully deleted.'],200);
+        } catch (\Throwable $th) {
+            return response()->json(['message' => 'An issue has occurred while tryng to delete post.: '.$th->getMessage()], 500);
+        }
+
+    }
 }
 }
